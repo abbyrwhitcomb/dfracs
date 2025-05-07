@@ -1,0 +1,101 @@
+---
+title: "chapter-6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{chapter-6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(tsgarch)
+library(xts)
+```
+
+```{r}
+nasdaq <- read.table(system.file("extdata", "nasdaq_w_logret.txt", package = "dfracs"), header = TRUE)
+nasdaq$Date <- as.Date(nasdaq$Date, format = "%d-%b-%y")
+
+d_logret <- read.table(system.file("extdata", "d_logret_16stocks.txt", package = "dfracs"), header = TRUE)
+d_logret$Date <- as.Date(d_logret$X.Date, format = "%d-%b-%y")
+
+## Page 140
+plot(Merck ~ Date, data = d_logret, 
+     type = "l",  lwd = 0.75,
+     main = "Weekly Log Returns of Merck",
+     xlab = "Time",
+     ylab = "Log Returns")
+
+## Page 141
+plot(logreturn ~ Date, data = nasdaq, 
+     type = "l",  lwd = 0.75,
+     main = "Weekly Log Returns of NASDAQ",
+     xlab = "Time",
+     ylab = "Log Returns")
+
+hist(nasdaq$logreturn, 
+     main = "Histogram for Weekly Log Returns of NASDAQ", 
+     xlab = "NASDAQ Log Returns", 
+     ylab = "Frequency",
+     breaks = 20)
+
+## Page 142
+
+r <- nasdaq$logreturn
+
+print(mean(r)) 
+print(var(r)) 
+
+skewness <- (1/length(r)) * sum((r - mean(r))^3 / (sd(r))^3)
+print(skewness) 
+
+kurtosis <- (1/length(r)) * sum((r - mean(r))^4 / (sd(r))^4)
+print(kurtosis) 
+
+jb <- length(r) * ((skewness^2)/6 + ((kurtosis - 3)^2/24))
+print(jb) 
+
+Box.test(nasdaq$logreturn, lag = 25, type = "Ljung-Box") 
+
+acf(nasdaq$logreturn,
+    main = "ACF of NASDAQ", 
+    lwd = 4)
+nasdaq$sq_logreturn <- nasdaq$logreturn^2
+acf(nasdaq$sq_logreturn, 
+    main = "Squared Series ACF of NASDAQ", 
+    lwd = 4)
+
+## Page 143
+
+returns <- d_logret[, 2:(ncol(d_logret) - 1)]
+returns_xts <- xts(returns, order.by = d_logret$Date)
+
+garch_models <- list()
+for (company in colnames(returns_xts)){
+  spec <- garch_modelspec(
+    y = returns_xts[, company],
+    model = "garch",
+    order = c(1, 1),  # GARCH(1,1)
+    constant = TRUE,
+    variance_targeting = FALSE,
+    distribution = "norm")
+  garch_models[company] <- estimate.tsgarch.spec(spec)
+}
+
+## Page 150
+
+for (companies in names(garch_models)) {
+  cat(companies, "\n")
+  print(garch_models[[companies]]$parmatrix)
+  cat("\n")
+}
+```
+

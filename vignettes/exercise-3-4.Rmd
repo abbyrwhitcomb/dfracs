@@ -1,0 +1,97 @@
+---
+title: "exercise-3-4"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-3-4}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### Let mu and sigma denote the sample mean and the sample covariance matrix of the observed sample {r1,...,rn}, and let w∗b be the estimated optimal portfolio weight vector based on the bth bootstrap sample {r∗b1,...,r∗bn} drawn with replacement from the observed sample {r1,...,rn}. The file d_logret_6stocks.txt contains the log returns of six stocks in Section 3.2.4.
+
+d_logret <- read.table(system.file("extdata", "d_logret_6stocks.txt", package = "dfracs"), header = TRUE)
+returns <- d_logret[, -1] 
+
+## a: Use one bootstrap sample to plot the curve ( (w∗b )T sigmaw∗b ,(w∗b )T mu) for diﬀerent target mean returns mu*.
+
+set.seed(1052)
+boot <- returns[sample(nrow(returns), replace = TRUE), ]
+
+mu <- colMeans(boot)
+Sigma <- cov(boot)
+targets <- seq(min(mu), max(mu), length.out = 50)
+
+orig_frontier <- frontier(mu, Sigma, targets)
+plot(orig_frontier$risk, orig_frontier$return, type = "l",
+     xlab = "Risk", 
+     ylab = "Expected Return")
+
+## b: Repeat (a) for B = 10 bootstrap samples. Explain why all the plotted curves are below the estimated eﬃcient frontier based on mu and sigma.
+
+set.seed(1052)
+B <- 10
+n <- nrow(returns)
+
+for (b in 1:B) {
+  boot <- returns[sample(n, replace = TRUE), ]
+  mu_b <- colMeans(boot)
+  Sigma_b <- cov(boot)
+  boot_frontier <- frontier(mu_b, Sigma_b, targets)
+  lines(boot_frontier$risk, boot_frontier$return, col = rgb(0, 0, 1, 0.3))
+}
+
+## c: Compute Michaud’s resampled eﬃcient frontier by using B = 500 bootstrap samples.
+
+mu_orig <- colMeans(returns)
+Sigma_orig <- cov(returns)
+targets <- seq(min(mu_orig), max(mu_orig), length.out = 50)
+n_assets <- ncol(returns)
+n <- nrow(returns)
+B <- 500
+
+resampled_weights <- array(0, dim = c(B, n_assets, length(targets)))
+
+set.seed(1052)
+for (b in 1:B) {
+  boot <- returns[sample(n, replace = TRUE), ]
+  mu_b <- colMeans(boot)
+  Sigma_b <- cov(boot)
+  A <- cbind(rep(1, n_assets), mu_b)
+  Sigma_inv <- solve(Sigma_b)
+  
+  for (i in seq_along(targets)) {
+    bvec <- c(1, targets[i])
+    lambda <- solve(t(A) %*% Sigma_inv %*% A) %*% bvec
+    w_b <- Sigma_inv %*% A %*% lambda
+    resampled_weights[b, , i] <- w_b
+  }
+}
+
+avg_weights <- apply(resampled_weights, c(2, 3), mean)
+
+resampled_returns <- numeric(length(targets))
+resampled_risks <- numeric(length(targets))
+
+for (i in seq_along(targets)) {
+  w_avg <- avg_weights[, i]
+  resampled_returns[i] <- sum(w_avg * mu_orig)
+  resampled_risks[i] <- sqrt(t(w_avg) %*% Sigma_orig %*% w_avg)
+}
+
+plot(resampled_risks, resampled_returns, type = "l",
+     xlab = "sRisk", ylab = "Expected Return",
+     main = "Michaud’s Resampled Efficient Frontier")
+```
+

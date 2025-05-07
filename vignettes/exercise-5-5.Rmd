@@ -1,0 +1,83 @@
+---
+title: "exercise-5-5"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-5-5}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### Consider the time series of U.S. monthly unemployment rates from January 1948 to July 2007 in the file m us unem.txt. These data, which have been seasonally adjusted, are obtained from the Federal Reserve Bank of St. Louis.
+
+m_us_unem <- read.table(system.file("extdata", "m_us_unem.txt", package = "dfracs"), header = TRUE, skip = 1, sep = "")
+m_us_unem$DATE <- as.Date(m_us_unem$DATE, format = "%Y-%m-%d")
+
+plot(m_us_unem$DATE, m_us_unem$VALUE, 
+     main = "US Monthly Unemployment Rates",
+     type = "l",
+     xlab = "Date", 
+     ylab = "Unemployment Rate",)
+
+## a: Plot the ACF and PACF of the rates and the diﬀerenced rates.
+acf(m_us_unem$VALUE, 
+    main = "ACF of US Unemployment Rates", 
+    lwd = 4)
+
+pacf(m_us_unem$VALUE, 
+     main = "PACF of US Unemployment Rates", 
+     lwd = 4)
+
+diff_m_us_unem <- diff(m_us_unem$VALUE)
+plot(m_us_unem$DATE, c(NA, diff_m_us_unem), 
+     main = "Differenced US Monthly Unemployment Rates",
+     type = "l",
+     xlab = "Date", 
+     ylab = "Differenced Unemployment Rate",)
+
+acf(diff_m_us_unem, 
+    main = "ACF of Differenced US Unemployment Rates", 
+    lwd = 4)
+
+pacf(diff_m_us_unem, 
+     main = "PACF of Differenced US Unemployment Rates", 
+     lwd = 4)
+
+## b: Fit an ARMA model to the data from January 1948 to December 2006. (Hint: Use a model selection criterion to choose the order within a prescribed range of orders.)
+
+ts <- ts(m_us_unem)[,-1]
+aic <- matrix(NA, nrow = 6, ncol = 6)
+for (p in 0:5) {
+  for (q in 0:5) {
+    arma <- arima(ts, order = c(p, 0, q))
+    aic[p + 1, q + 1] <- AIC(arma)
+  }
+}
+rownames(aic) <- paste("p =", 1:6)
+colnames(aic) <- paste("q =", 1:6)
+print(aic)
+min(aic) #p=5, q=6
+
+## c: Use your fitted model to compute k-months-ahead forecasts (k= 1,2,...,6) and their standard errors, choosing December 2006 as the forecast origin. Compare your forecasts with the actual unemployment rates.
+
+arima5_0_6 <- arima(ts, order = c(5, 0, 6))
+forecast <- predict(arima5_0_6, n.ahead = 6)
+
+data.frame(
+  `K-months-ahead` = 1:6,
+  Forecast = forecast$pred,
+  SE = forecast$se
+)
+```
+

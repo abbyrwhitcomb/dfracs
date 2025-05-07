@@ -1,0 +1,39 @@
+---
+title: "exercise-2-3"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-2-3}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file d_logret_12stocks.txt contains the daily log returns of 12 stocks from January 3, 2001 to December 30, 2005. The 12 stocks include Apple Computer, Adobe Systems, Automatic Data Processing, Advanced Micro Devices, Dell, Gateway, Hewlett-Packard Company, International Business Machines Corp., Microsoft Corp., Orcale Corp., Sun Microsystems, and Yahoo!.
+
+d_logret <- read.table(system.file("extdata", "d_logret_12stocks.txt", package = "dfracs"), header = TRUE)
+
+##a: Perform a principal component analysis (PCA) of the data using the sample covariance matrix.
+cov_pca <- prcomp(d_logret[, -1], scale = FALSE, center = TRUE)
+summary(cov_pca)
+cov(d_logret[, -1])
+biplot(cov_pca, main = "Covariance Biplot")
+
+##b: Perform a PCA of the data using the sample correlation matrix. 
+cor_pca <- prcomp(d_logret[, -1], scale = TRUE, center = TRUE) 
+summary(cor_pca)
+cor(d_logret[, -1])
+
+biplot(cor_pca, main = "Correlation Biplot")
+```
+

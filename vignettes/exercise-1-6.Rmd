@@ -1,0 +1,59 @@
+---
+title: "exercise-1-6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-1-6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file w_logret_3stocks.txt contains the weekly log returns of Pfizer stock from the week of January 4, 1982 to the week of May 21, 2007.
+
+w_logret <- read.table(system.file("extdata", "w_logret_3stocks.txt", package = "dfracs"), header = TRUE)
+w_logret$Date <- as.Date(w_logret$Date, format = "%m/%d/%Y")
+pfizer <- w_logret[, c(1, 3)]
+
+##a: Plot these data over time. Does the plot show deviations from the i.i.d. assumption? Consider in particular the 897th week (which is the week of March 8, 1999). Are the returns before and after that week markedly diﬀerent?
+
+multiplotlogreturns(w_logret, "PFE", "Date", "Weekly")
+
+pfizer_before <- pfizer[1:896,]
+pfizer_after <- pfizer[897:nrow(pfizer),]
+
+plotlogreturns(pfizer_before, "PFE", "Date", "Weekly (before March 8, 1999)")
+plotlogreturns(pfizer_after, "PFE", "Date", "Weekly (before March 8, 1999)")
+
+##b: Fit the following regression model to these data:r_t = mu_1 * 1_{t<t_0} + mu_2 * 1{t>=t_0} + e_t with t0 = 897. Provide 95% confidence intervals for mu_1 and mu_2.
+
+t_0 <- 897
+pfizer$date_category <- NA
+
+for (row in 1:nrow(pfizer)) {
+  if (row < t_0) {
+    pfizer$date_category[row] <- 0 
+  } else {
+    pfizer$date_category[row] <- 1  
+  }
+}
+
+model <- lm(PFE ~ date_category, data = pfizer)
+summary(model)
+confint(model, level = 0.95)
+
+##c: Test the null hypothesis mu_1 = mu_2.
+
+t_test(model)
+```
+

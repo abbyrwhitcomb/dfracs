@@ -1,0 +1,101 @@
+---
+title: "exercise-6-10"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-6-10}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(rugarch)
+```
+
+```{r}
+#### The file nasdaq_w_logret.txt contains the weekly log returns on the NASDAQ index during the period November 11, 1984 to September 15, 2003.
+
+nasdaq_w_logret <- read.table(system.file("extdata", "nasdaq_w_logret.txt", package = "dfracs"), header = TRUE)
+nasdaq_w_logret$Date <- as.Date(nasdaq_w_logret$Date, format = "%d-%b-%y")
+
+## a: Fit a GARCH(1, 1) model with Gaussian innovations to the entire series.
+
+spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)), mean.model = list(armaOrder = c(0,0), include.mean = TRUE), distribution.model = "norm")
+
+sgarch1_1 <- ugarchfit(spec = spec, data = nasdaq_w_logret$logret)
+show(sgarch1_1)
+
+estimates <- coef(sgarch1_1)
+standard_errors <- sqrt(diag(vcov(sgarch1_1)))
+
+df <- data.frame(
+  Parameter = names(estimates),
+  Estimate = estimates,
+  Standard_Error = standard_errors
+)
+
+print(df)
+
+## b: Divide the sample period into four parts: November 19, 1984 to June 16, 1987; June 9, 1987 to August 15, 1990; August 8, 1990 to March 13, 1998; and March 6, 1998 to September 15, 2003. Fit a GARCH(1, 1) model with Gaussian innovations to the NASDAQ weekly log returns during each period.
+
+period1 = nasdaq_w_logret[nasdaq_w_logret$Date >= as.Date("1984-11-19") & nasdaq_w_logret$Date <= as.Date("1987-06-16"), ]
+period2 = nasdaq_w_logret[nasdaq_w_logret$Date >= as.Date("1987-06-09") & nasdaq_w_logret$Date <= as.Date("1990-08-15"), ]
+period3 = nasdaq_w_logret[nasdaq_w_logret$Date >= as.Date("1990-08-08") & nasdaq_w_logret$Date <= as.Date("1998-03-13"), ]
+period4 = nasdaq_w_logret[nasdaq_w_logret$Date >= as.Date("1998-03-06") & nasdaq_w_logret$Date <= as.Date("2003-09-15"), ]
+
+period1_sgarch1_1 <- ugarchfit(spec = spec, data = period1$logret)
+period2_sgarch1_1 <- ugarchfit(spec = spec, data = period2$logret)
+period3_sgarch1_1 <- ugarchfit(spec = spec, data = period3$logret)
+period4_sgarch1_1 <- ugarchfit(spec = spec, data = period4$logret)
+
+show(period1_sgarch1_1)
+show(period2_sgarch1_1)
+show(period3_sgarch1_1)
+show(period4_sgarch1_1)
+
+## c: Compare the results in (a) and (b), and discuss the possibility of parameter changes and their implications on volatility persistence.
+
+estimates <- coef(sgarch1_1)
+standard_errors <- sqrt(diag(vcov(sgarch1_1)))
+persistence <- estimates["alpha1"] + estimates["beta1"]
+print(estimates)
+print(standard_errors)
+print(persistence)
+
+period1_estimate <- coef(period1_sgarch1_1)
+period1_standard_error <- sqrt(diag(vcov(period1_sgarch1_1)))
+period1_persistence <- period1_estimate["alpha1"] + period1_estimate["beta1"]
+print(period1_estimate)
+print(period1_standard_error)
+print(period1_persistence)
+
+period2_estimate <- coef(period2_sgarch1_1)
+period2_standard_error <- sqrt(diag(vcov(period2_sgarch1_1)))
+period2_persistence <- period2_estimate["alpha1"] + period2_estimate["beta1"]
+print(period2_estimate)
+print(period2_standard_error)
+print(period2_persistence)
+
+period3_estimate <- coef(period3_sgarch1_1)
+period3_standard_error <- sqrt(diag(vcov(period3_sgarch1_1)))
+period3_persistence <- period3_estimate["alpha1"] + period3_estimate["beta1"]
+print(period3_estimate)
+print(period3_standard_error)
+print(period3_persistence)
+
+period4_estimate <- coef(period4_sgarch1_1)
+period4_standard_error <- sqrt(diag(vcov(period4_sgarch1_1)))
+period4_persistence <- period4_estimate["alpha1"] + period4_estimate["beta1"]
+print(period4_estimate)
+print(period4_standard_error)
+print(period4_persistence)
+
+```
+

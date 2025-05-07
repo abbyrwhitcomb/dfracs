@@ -1,0 +1,57 @@
+---
+title: "exercise-6-7"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-6-7}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(rugarch)
+```
+
+```{r}
+#### The file sp500_d_logret.txt contains the daily log returns on the S&P 500 index from January 3 1980 to June 28, 2007.
+
+sp500_d_logret <- read.table(system.file("extdata", "sp500_d_logret.txt", package = "dfracs"), header = TRUE)
+
+## a: Fit an AR(1)-GARCH(1, 1) model with Gaussian innovations to the data, and give standard errors of the parameter estimates.
+
+spec <- ugarchspec(var = list(model = "sGARCH", garchOrder = c(1,1)), mean = list(armaOrder = c(1,0), include.mean = TRUE), distribution.model = "norm")
+
+ar1_garch1_1 <- ugarchfit(spec = spec, data = sp500_d_logret$logret, solver = "hybrid")
+show(ar1_garch1_1)
+
+estimates <- coef(ar1_garch1_1)
+standard_errors <- sqrt(diag(vcov(ar1_garch1_1)))
+
+df <- data.frame(
+  Parameter = names(estimates),
+  Estimate = estimates,
+  Standard_Error = standard_errors
+)
+
+print(df)
+
+## b: Compute k-days-ahead forecasts (k = 1,...,5) of the log return and its volatility, using the fitted model and June 28, 2007 as the forecast origin.
+
+forecast <- ugarchforecast(ar1_garch1_1, n.ahead = 5)
+
+df <- data.frame(
+  K_ahead = 1:5,
+  Log_return = as.numeric(fitted(forecast)),
+  Volatility = as.numeric(sigma(forecast))
+)
+
+print(df)
+```
+

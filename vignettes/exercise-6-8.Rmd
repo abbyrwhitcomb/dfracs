@@ -1,0 +1,60 @@
+---
+title: "exercise-6-8"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-6-8}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(rugarch)
+```
+
+```{r}
+#### Consider the weekly log returns on the S&P 500 index from the week of January 3, 1950 to the week of June 18, 2007 in the file sp500 w_logret.txt.
+
+sp500_w_logret <- read.table(system.file("extdata", "sp500_w_logret.txt", package = "dfracs"), header = TRUE)
+sp500_w_logret$Date <- as.Date(sp500_w_logret$Date, format = "%m/%d/%Y")
+
+## a: Fit the GARCH(1, 1) model rt = mu + ut, ut = sigmatesilont, sigma2t = omega + alphau2t−1 + betaσsigma2t−1 (6.38) to the series, where epsilont are i.i.d. standard normal random variables. Provide the standard errors of the parameter estimates.
+
+spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)), mean.model = list(armaOrder = c(0,0), include.mean = TRUE), distribution.model = "norm")
+
+sgarch1_1 <- ugarchfit(spec = spec, data = sp500_w_logret$logret)
+show(sgarch1_1)
+
+estimates <- coef(sgarch1_1)
+standard_errors <- sqrt(diag(vcov(sgarch1_1)))
+
+df <- data.frame(
+  Parameter = names(estimates),
+  Estimate = estimates,
+  Standard_Error = standard_errors
+)
+
+print(df)
+
+## b: Plot the estimated conditional volatilities sigmat and innovations epsilont over time. At what times do you find atypically large values of sigmat? Relate these times to the historical events during the sample period.
+
+plot(sp500_w_logret$Date, sigma(sgarch1_1), 
+     type = "l", 
+     lwd = 0.5,
+     xlab = "Date", 
+     main = "Estimated Conditional Volatility Over Time)")
+
+plot(sp500_w_logret$Date, residuals(sgarch1_1, standardize = TRUE), 
+     type = "l",
+     lwd = 0.5,
+     xlab = "Date",
+     main = "Innovations Over Time)")
+```
+

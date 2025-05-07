@@ -1,0 +1,56 @@
+---
+title: "exercise-5-8"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-5-8}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file m caus ex.txt contains the monthly Canada/U.S. exchange rate (Canadian dollars to U.S. dollars) from January 1971 to July 2007, which are obtained from the Federal Reserve Bank of St. Louis.
+
+m_caus <- read.table(system.file("extdata", "m_caus_ex.txt", package = "dfracs"), header = FALSE, col.names = c("Date", "Exchange_rate"), skip = 1, sep = "")
+m_caus$Date <- as.Date(m_caus$Date, format = "%Y-%m-%d")
+
+## a: Plot the time series and its ACF. Are there seasonal eﬀects or unit-root nonstationary patterns in the series?
+plot(m_caus$Date, m_caus$Exchange_rate, 
+     main = "US GDP",
+     type = "l",
+     xlab = "Date", 
+     ylab = "GDP",)
+
+## b: Using the rates from January 1971 to December 2006, build a time series model to forecast the rates in the next 6 months. You can use any of the techniques in Sections 5.1 and 5.2, and economic insights, if available, to build the forecasting model, but should explain your rationale.
+
+real_dates <- subset(m_caus, Date <= as.Date("2006-12-01"))
+real_ts <- ts(real_dates$Exchange_rate, start = c(1971, 1), frequency = 12)
+model <- arima(real_ts, order = c(1, 1, 1))
+
+## c: Compute the k-months-ahead forecasts (k = 1,2,...,6) based on your fitted model, using December 2006 as the forecast origin. Compare the forecasts with the actual exchange rates.
+
+forcast_dates <- subset(m_caus, Date > as.Date("2006-12-01") & Date <= as.Date("2007-06-01"))
+forecast_result <- predict(model, n.ahead = 6)
+
+pred <- forecast_result$pred
+actual <- forcast_dates$Exchange_rate
+errors <- actual - pred
+
+# Combine and display results
+data.frame(
+  Month = 1:6,
+  Forecast = pred,
+  Actual = actual,
+  Forecast_Error = errors
+)
+```

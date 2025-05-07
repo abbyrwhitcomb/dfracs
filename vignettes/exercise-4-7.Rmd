@@ -1,0 +1,140 @@
+---
+title: "exercise-4-7"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-4-7}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+## The file m ret 10stocks.txt contains the monthly returns of ten stocks from January 1994 to December 2006. The ten stocks include Apple Computer, Adobe Systems, Automatic Data Processing, Advanced Micro Devices, Dell, Gateway, Hewlett-Packard Company, International Business Machines Corp., Microsoft Corp., and Oracle Corp. The file m sp500ret 3mtcm.txt contains three columns. The second column gives the monthly returns of the S&P 500 index from January 1994 to December 2006. The third column gives the monthly rates of the 3-month Treasury bill in the secondary market, which are obtained from the Federal Reserve Bank of St. Louis and used as the risk-free rate here. Consider portfolios that consist of the ten stocks and allow short selling.
+
+m_sp500ret <- read.table(system.file("extdata", "m_sp500ret_3mtcm.txt", package = "dfracs"), header = TRUE, skip = 1)
+m_sp500ret$Date <- as.Date(paste0("01-", m_sp500ret$Date), format = "%d-%b-%y")
+m_logret <- read.table(system.file("extdata", "m_logret_10stocks.txt", package = "dfracs"), header = TRUE)
+
+## a: Using a single-index model (see Exercise 3.3) for the structured covariance matrix F, calculate the estimate F of F in (4.45).
+
+returns <- m_logret[, -1]
+market <- m_sp500ret[, 2]
+rf <- m_sp500ret[, 3]
+
+excess_market <- market - rf
+excess_returns <- sweep(returns, 1, rf)
+n_stocks <- ncol(excess_returns)
+betas <- numeric(n_stocks)
+resid_vars <- numeric(n_stocks)
+
+for (i in 1:n_stocks) {
+  model <- lm(excess_returns[, i] ~ excess_market)
+  betas[i] <- coef(model)[2]
+  resid_vars[i] <- var(resid(model))
+}
+
+B <- matrix(betas, ncol = 1)
+sigma_m2 <- var(excess_market)
+D <- diag(resid_vars)
+
+F_hat <- B %*% t(B) * sigma_m2 + D
+print(F_hat)
+
+## b: The delta in (4.45) suggested by Ledoit and Wolf (2003, 2004) is of the following form. Let fij and sigmaij denote the (i,j)th entry of F and S, respectively, and define... Then delta = min{1,(k, n)+}. Compute the covariance estimate (4.45) with F in (a) and the delta suggested by Ledoit and Wolf, and plot the estimated eﬃcient frontier using this covariance estimate.
+
+n <- nrow(excess_returns)
+p <- ncol(excess_returns)
+
+betas <- numeric(p)
+resid_vars <- numeric(p)
+for (i in 1:p) {
+  model <- lm(excess_returns[, i] ~ excess_market)
+  betas[i] <- coef(model)[2]
+  resid_vars[i] <- var(resid(model))
+}
+
+B <- matrix(betas, ncol = 1)
+sigma_m2 <- var(excess_market)
+F_hat <- B %*% t(B) * sigma_m2 + diag(resid_vars)
+S <- cov(excess_returns)
+
+S_centered <- scale(excess_returns, center = TRUE, scale = FALSE)
+var_Sij <- matrix(0, p, p)
+for (i in 1:p) {
+  for (j in 1:p) {
+    var_Sij[i, j] <- var(S_centered[, i] * S_centered[, j]) / n
+  }
+}
+delta <- min(1, sum(var_Sij) / sum((F_hat - S)^2))
+Sigma_LW <- delta * F_hat + (1 - delta) * S
+
+mu <- colMeans(returns)
+targets <- seq(min(mu), max(mu), length.out = 100)
+Sigma_inv <- solve(Sigma_LW)
+A <- cbind(rep(1, p), mu)
+risks <- rets <- numeric(length(targets))
+
+for (i in seq_along(targets)) {
+  b <- c(1, targets[i])
+  lambda <- solve(t(A) %*% Sigma_inv %*% A) %*% b
+  w <- Sigma_inv %*% A %*% lambda
+  rets[i] <- sum(w * mu)
+  risks[i] <- sqrt(t(w) %*% Sigma_LW %*% w)
+}
+plot(risks, rets, type = "l",
+     xlab = "Risk", 
+     ylab = "Expected Return")
+
+## c: Perform PCA on the ten stocks. Using the first two principal components as factors in a two-factor model for F (see Section 3.4.3), estimate F.
+
+datapca <- scale(returns, center = TRUE, scale = FALSE)
+pca <- prcomp(datapca)
+
+scores <- pca$x[, 1:2]
+B <- coef(lm(as.matrix(datapca) ~ scores))[-1, ]  
+resid <- datapca - scores %*% B
+D <- diag(diag(cov(resid)))
+F_hat <- t(B) %*% cov(scores) %*% B + D
+
+print(F_hat)
+
+## d: Using the estimated F in (c) as the shrinkage target in (4.45), compute the new value of delta and the new shrinkage estimate (4.45) of sigma. Plot the corresponding estimated eﬃcient frontier and compare it with that in (b).
+
+Sigma <- cov(datapca)
+
+n <- nrow(datapca)
+var_Sij <- outer(1:ncol(Sigma), 1:ncol(Sigma), Vectorize(function(i, j) var(datapca[, i] * datapca[, j]) / n))
+delta <- min(1, sum(var_Sij) / sum((F_hat - Sigma)^2))
+
+Sigma_shrink <- delta * F_hat + (1 - delta) * Sigma
+
+mu <- colMeans(returns)
+targets <- seq(min(mu), max(mu), length.out = 100)
+A <- cbind(1, mu)
+Sigma_inv <- solve(Sigma_shrink)
+
+risks <- numeric(length(targets))
+rets <- numeric(length(targets))
+for (i in seq_along(targets)) {
+  lambda <- solve(t(A) %*% Sigma_inv %*% A) %*% c(1, targets[i])
+  w <- Sigma_inv %*% A %*% lambda
+  rets[i] <- sum(w * mu)
+  risks[i] <- sqrt(t(w) %*% Sigma_shrink %*% w)
+}
+
+
+plot(risks, rets, type = "l",
+     xlab = "Risk", 
+     ylab = "Expected Return")
+```
+

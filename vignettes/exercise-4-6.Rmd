@@ -1,0 +1,36 @@
+---
+title: "exercise-4-6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-4-6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(minpack.lm)
+```
+
+```{r}
+#### The file d_tcm_var.txt contains the variances vτ of the yields of U.S. 1-year, 2-year, 3-year, 5-year, 7-year, 10-year, and 20-year zero-coupon bonds, calculated from the weekly Treasury constant maturity rates from August 11, 1995 to September 28, 2007. Assume the Hull-White model for the yield of a τ-year zero-coupon bond. Estimate the parameters κ and σ of the Hull-White model using nonlinear least squares, and give a 95% confidence interval for each parameter.
+
+d_tcm_var <- read.table(system.file("extdata", "d_tcm_var.txt", package = "dfracs"), header = TRUE)
+
+v <- as.numeric(d_tcm_var[1, -1])
+tau <- c(1, 2, 3, 5, 7, 10, 20)
+df <- data.frame(tau = tau, v = v)
+
+hull_white_model <- nlsLM(v ~ ((1 - exp(-k * tau)) / (k * tau))^2 * (s^2 / (2 * k)), data = df, start = list(k = 0.1, s = 0.01))
+summary(hull_white_model)
+confint(hull_white_model)
+```
+```
+

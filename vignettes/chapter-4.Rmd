@@ -1,0 +1,32 @@
+---
+title: "chapter-4"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{chapter-4}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(minpack.lm)
+```
+
+```{r}
+## Page 102
+v <- c(2.742, 2.503, 2.154, 1.599, 1.331, 1.090, 0.856) / 10^4
+tau <- c(1, 2, 3, 5, 7, 10, 20)
+df <- data.frame(tau = tau, v = v)
+
+hull_white_model <- nlsLM(v ~ ((1 - exp(-k * tau)) / (k * tau))^2 * (s^2 / (2 * k)), data = df, start = list(k = 0.1, s = 0.01))
+summary(hull_white_model)
+confint(hull_white_model, level = 0.95)
+```
+

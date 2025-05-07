@@ -1,0 +1,64 @@
+---
+title: "exercise-6-4"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-6-4}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(rugarch)
+```
+
+```{r}
+#### The file intel_d_logret.txt contains the daily log returns of Intel stock from July 9, 1986 to June 29, 2007.
+
+intel_d_logret <- read.table(system.file("extdata", "intel_d_logret.txt", package = "dfracs"), header = TRUE)
+
+## a: Do you find any evidence of conditional heteroskedasticity in the time series? Use the Ljung-Box statistic up to lag 10 and the ACF plots of the returns and the squared returns to draw your conclusion.
+
+acf(intel_d_logret$logret,
+    main = "ACF of NASDAQ", 
+    lwd = 4)
+intel_d_logret$sq_logreturn <- intel_d_logret$logret^2
+acf(intel_d_logret$sq_logreturn, 
+    main = "Squared Series ACF of NASDAQ", 
+    lwd = 4)
+Box.test(intel_d_logret$logret, lag = 10, type = "Ljung-Box") 
+
+## b: Build a GARCH(1, 1) model with Gaussian innovations for the return series. Use the Ljung-Box statistic up to lag 10 to test if the estimated innovations ϵt are serially correlated. Plot the ACF of ϵtand the rejection boundaries of a 5%-level test of zero autocorrelation at each lag.
+
+spec <- ugarchspec(
+  var = list(model = "sGARCH", garchOrder = c(1,1)),
+  mean = list(armaOrder = c(0,0), include.mean = TRUE),
+  distribution.model = "norm")
+
+garch1_1 <- ugarchfit(spec = spec, data = intel_d_logret$logret)
+
+Box.test(residuals(garch1_1, standardize = TRUE), lag = 10, type = "Ljung-Box")
+
+## c: Use the fitted GARCH(1, 1) model in (b) to obtain k-days-ahead volatility forecasts on June 29, 2007 as the forecast origin (k=1,...,10) and give 95% confidence intervals for these forecasts.
+
+forecast <- ugarchforecast(garch1_1, n.ahead = 10)
+sigma <- sigma(forecast)
+
+lower <- sigma - 1.96 * sigma
+upper <- sigma + 1.96 * sigma
+
+data.frame(
+  K_days = 1:10,
+  lower_bound = lower,
+  upper_bound = upper
+)
+
+```
+

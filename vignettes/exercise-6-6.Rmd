@@ -1,0 +1,46 @@
+---
+title: "exercise-6-6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-6-6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(rugarch)
+```
+
+```{r}
+#### Consider the monthly log returns on GM (General Motors) stock from January 1962 to June 2007 in the file gm_m_logret.txt.
+
+gm_m_logret <- read.table(system.file("extdata", "gm_m_logret.txt", package = "dfracs"), header = TRUE)
+
+## a: Fit an EGARCH(1, 1) model to the data, and provide standard errors of the parameter estimates.
+
+spec <- ugarchspec(var = list(model = "eGARCH", garchOrder = c(1,1)), mean = list(armaOrder = c(0,0), include.mean = TRUE), distribution.model = "norm")
+egarch1_1 <- ugarchfit(spec = spec, data = gm_m_logret$logret)
+show(egarch1_1)
+
+## b: Compute k-months-ahead volatility forecasts (k = 1,...,10) using June 2007 as the forecast origin, and give 95% confidence intervals for these forecasts.
+
+forecast <- ugarchforecast(egarch1_1, n.ahead = 10)
+
+df <- data.frame(
+  K_ahead = 1:10,
+  Volatility = as.numeric(sigma(forecast)),
+  lower_bound = as.numeric(sigma(forecast)) * qnorm(0.025),
+  upper_bound = as.numeric(sigma(forecast)) * qnorm(0.975)
+)
+
+print(df)
+```
+

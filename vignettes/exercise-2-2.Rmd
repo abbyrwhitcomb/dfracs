@@ -1,0 +1,40 @@
+---
+title: "exercise-2-2"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-2-2}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file m_swap.txt contains the monthly swap rates rkt for eight maturities Tk = 1,2,3,4,5,7,10, and 30 years from July 2000 to June 2007.
+
+m_swap <- read.table(system.file("extdata", "m_swap.txt", package = "dfracs"), header = TRUE, skip = 1)
+
+## a: Perform a principal component analysis (PCA) of the data using the sample covariance matrix.
+cov_pca <- prcomp(m_swap[, -1], scale = FALSE, center = TRUE)
+cov(m_swap[, -1])
+summary(cov_pca)
+
+## b: Perform a PCA of the data using the sample correlation matrix.
+cor_pca <- prcomp(m_swap[, -1], scale = TRUE, center = TRUE) 
+summary(cor_pca)
+cor(m_swap[, -1])
+
+## c: Compare your results with those in Section 2.2.3. Discuss the influence of sampling frequency on the result.
+biplot(cov_pca, main = "Covariance Biplot")
+biplot(cor_pca, main = "Correlation Biplot")
+```
+

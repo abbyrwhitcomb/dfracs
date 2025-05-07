@@ -1,0 +1,71 @@
+---
+title: "exercise-5-6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-5-6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file q us gdp.txt contains the seasonally adjusted time series of quarterly U.S. gross domestic product (GDP) from the first quarter of 1947 to the first quarter of 2007. The data are obtained from the Federal Reserve Bank of St. Louis.
+
+q_us_gdp <- read.table(system.file("extdata", "q_us_gdp.txt", package = "dfracs"), header = TRUE, skip = 1, sep = "")
+q_us_gdp$DATE <- as.Date(q_us_gdp$DATE, format = "%Y-%m-%d")
+
+plot(q_us_gdp$DATE, q_us_gdp$VALUE, 
+     main = "US GDP",
+     type = "l",
+     xlab = "Date", 
+     ylab = "GDP",)
+
+## a: Plot the ACF and PACF of the rates and the diﬀerenced rates.
+acf(q_us_gdp$VALUE, 
+    main = "ACF of US GDP", 
+    lwd = 4)
+
+pacf(q_us_gdp$VALUE, 
+     main = "PACF of US GDP", 
+     lwd = 4)
+
+diff_q_us_gdp <- diff(q_us_gdp$VALUE)
+plot(q_us_gdp$DATE, c(NA, diff_q_us_gdp), 
+     main = "Differenced US GDP",
+     type = "l",
+     xlab = "Date", 
+     ylab = "Differenced GDP",)
+
+acf(diff_q_us_gdp, 
+    main = "ACF of Differenced US GDP", 
+    lwd = 4)
+
+pacf(diff_q_us_gdp, 
+     main = "PACF of Differenced US GDP", 
+     lwd = 4)
+
+## b: Fit an ARMA model to the diﬀerenced series.
+
+ts <- ts(diff_q_us_gdp)
+aic <- matrix(NA, nrow = 6, ncol = 6)
+for (p in 0:5) {
+  for (q in 0:5) {
+    arma <- arima(ts, order = c(p, 1, q))
+    aic[p + 1, q + 1] <- AIC(arma)
+  }
+}
+rownames(aic) <- paste("p =", 1:6)
+colnames(aic) <- paste("q =", 1:6)
+print(aic)
+```
+

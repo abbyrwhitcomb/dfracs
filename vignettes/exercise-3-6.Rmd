@@ -1,0 +1,111 @@
+---
+title: "exercise-3-6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-3-6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file m_sp500ret_3mtcm.txt contains three columns. The second column gives the monthly returns of the S&P 500 index from January 1994 to December 2006. The third column gives the monthly rates of the 3-month U. S. Treasury bill in the secondary market, which is obtained from the Federal Reserve Bank of St. Louis and used as the risk-free asset here. Consider the ten monthly returns in the file m ret 10stocks.txt.
+
+m_sp500ret <- read.table(system.file("extdata", "m_sp500ret_3mtcm.txt", package = "dfracs"), header = TRUE, skip = 1)
+m_sp500ret$Date <- as.Date(paste0("01-", m_sp500ret$Date), format = "%d-%b-%y")
+m_logret <- read.table(system.file("extdata", "m_logret_10stocks.txt", package = "dfracs"), header = TRUE)
+
+## a: Fit CAPM to the ten stocks. Give point estimates and 95% confidence intervals of alpha, beta, the Sharpe index, and the Treynor index. (Hint: Use the delta method for the Sharpe and Treynor indices.)
+
+stocks <- m_logret[, -1]
+market <- m_sp500ret[, 2]  
+rf <- m_sp500ret[, 3]      
+
+capm_est <- capm(stocks, market, rf)
+capm_est
+
+## b: Use the bootstrap procedure in Section 3.5 to estimate the standard errors of the point estimates of α, β, and the Sharpe and Treynor indices.
+
+boot_est <- data.frame(
+  stock = colnames(stocks),
+  alpha_se = NA,
+  beta_se = NA,
+  sharpe_se = NA,
+  treynor_se = NA
+)
+
+for (i in 1:ncol(stocks)) {
+  boot_est[i, 2:5] <- bootstrap_capm(stocks[, i], market, rf)
+}
+print(boot_est)
+
+## c: Test for each stock the null hypothesis α = 0.
+
+alpha_test <- alpha_capm(stocks, market, rf)
+print(alpha_test)
+
+## d: Use the regression model (3.24) to test for the ten stocks the null hypothesis α = 0.
+# y_t = alpha + x_t*beta + epsilon_t, 1 ≤ t ≤ n, (3.24)
+
+alpha_test <- alpha_capm(stocks, market, rf)
+print(alpha_test)
+
+## e: Perform a factor analysis on the excess returns of the ten stocks. Show the factor loadings and rotated factor loadings. Explain your choice of the number of factors.
+
+excess_returns <- sweep(stocks, 1, rf)
+excess_market <- market - rf
+
+cor_mat <- cor(excess_returns)
+eigenvalues <- eigen(cor_mat)$values
+plot(eigenvalues, type = "b", pch = 16, 
+     main = "Scree Plot")
+
+fa <- factanal(excess_returns, factors = 1, rotation = "varimax", scores = "none")
+fa
+
+## f: Consider the model ret = β11{t<t0}reM + β21{t≥t0}reM + epsilont,in which ret = rt− rf and reM = rM− rf are the excess returns of thes tock and the S&P 500 index. The model suggests that the β in the CAPM might not be a constant (i.e., beta1 = beta2). Taking February 2001 as the month t0, test for each stock the null hypothesis that β1 = β2.
+
+t0 <- which(m_sp500ret$Date == as.Date("2001-02-01"))
+n <- nrow(stocks)
+before_after <- as.numeric(1:n >= t0)  
+
+beta <- data.frame(
+  stock = colnames(stocks),
+  beta1 = NA, beta2 = NA, diff = NA, se_diff = NA, t_stat = NA, p_value = NA
+)
+
+for (i in 1:ncol(stocks)) {
+  excess_stock <- stocks[, i] - rf
+  before <- excess_market * (1 - before_after)
+  after <- excess_market * before_after
+  model <- lm(excess_stock ~ before + after)
+  coefs <- coef(model)
+  vcov_mat <- vcov(model)
+  beta1 <- coefs["before"]
+  beta2 <- coefs["after"]
+  diff <- beta1 - beta2
+  se_diff <- sqrt(vcov_mat["before", "before"] + vcov_mat["after", "after"] - 2 * vcov_mat["before", "after"])
+  t_stat <- diff / se_diff
+  p_val <- 2 * pt(-abs(t_stat), df = model$df.residual)
+  
+  beta[i, 2:7] <- c(beta1, beta2, diff, se_diff, t_stat, p_val)
+}
+
+print(beta)
+
+## g: Estimate t0 in (f) by the least squares criterion that minimizes the residual sum of squares over (β1,β2,t0).
+
+t0s_est(stocks, market, rf, m_logret$Date)
+```
+
+

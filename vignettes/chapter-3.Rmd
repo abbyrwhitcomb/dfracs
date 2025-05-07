@@ -1,0 +1,89 @@
+---
+title: "chapter-3"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{chapter-3}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(quantmod)
+library(PerformanceAnalytics)
+```
+
+```{r}
+# Note. This DJI information is NOT from the textbook website. Complete Dow Jones Industrial Average information is not available from the author's to my knowledge. This is a close replication to what they have there from what I could find online.
+
+suppressMessages(getSymbols("^DJI", from = "2000-07-01", to = "2005-11-01"))
+month_data <- to.monthly(DJI, indexAt = "firstof", drop.time = TRUE)
+dj_ret <- CalculateReturns(month_data$DJI.Close, method = "log")
+dj_ret <- dj_ret[2:64] 
+
+## Page 72
+
+d_logret <- read.table(system.file("extdata", "d_logret_6stocks.txt", package = "dfracs"), header = TRUE)
+d_logret$Date <- as.Date(d_logret$Date, format = "%d-%b-%y")
+colnames(d_logret) <- c("Date", "PFE", "INTEL", "CITI", "AXP", "XOM", "GM")
+d_logret <- d_logret[ , c("Date", "AXP", "CITI", "XOM", "GM", "INTEL", "PFE")]
+
+# Some of the data does not feel quite right here. The textbook states this information is for August 2000 to October 2005, which ends at the second to last row of the matrix. The means are calculated according to that, but it appears the variances are calculated using the full matrix. I also believe the (6, 3) and (6, 4) entries of the contrivance matrix in the textbook is incorrect.
+returns <- d_logret[1:63, -1]
+mean_mat <- round(colMeans(returns)* 10^2, 3)
+cov_mat <- round(cov(d_logret[, -1]) * 10^4, 2)
+print(mean_mat)
+print(cov_mat)
+
+## Page 79
+
+lm_AXP <- lm(returns$AXP ~ dj_ret)
+lm_CITI <- lm(returns$CITI ~ dj_ret)
+lm_XOM <- lm(returns$XOM ~ dj_ret)
+lm_GM <- lm(returns$GM ~ dj_ret)
+lm_INTEL <- lm(returns$INTEL ~ dj_ret)
+lm_PFE <- lm(returns$PFE ~ dj_ret)
+
+# alpha x 10^3
+10^3 * c(coef(lm_AXP)[1], coef(lm_CITI)[1], coef(lm_XOM)[1], coef(lm_GM)[1], coef(lm_INTEL)[1], coef(lm_PFE)[1])
+
+#p-value
+c(summary(lm_AXP)$coefficients[1, 4], summary(lm_CITI)$coefficients[1, 4], summary(lm_XOM)$coefficients[1, 4], summary(lm_GM)$coefficients[1, 4], summary(lm_INTEL)$coefficients[1, 4], summary(lm_PFE)$coefficients[1, 4])
+
+# beta
+c(coef(lm_AXP)[2], coef(lm_CITI)[2], coef(lm_XOM)[2], coef(lm_GM)[2], coef(lm_INTEL)[2], coef(lm_PFE)[2])
+
+# beta^2 x sigma^2_M x 10^4
+10^4 * c(coef(lm_AXP)[2], coef(lm_CITI)[2], coef(lm_XOM)[2], coef(lm_GM)[2], coef(lm_INTEL)[2], coef(lm_PFE)[2])^2 * var(dj_ret)
+
+# sigma^2_e x 10^4
+10^4 * c(var(lm_AXP$residuals), var(lm_CITI$residuals), var(lm_XOM$residuals), var(lm_GM$residuals), var(lm_INTEL$residuals), var(lm_PFE$residuals))
+
+# sharpe x 10^2
+10^2 * c(mean(returns$AXP)/sd(returns$AXP), mean(returns$CITI)/sd(returns$CITI), mean(returns$XOM)/sd(returns$XOM), mean(returns$GM)/sd(returns$GM), mean(returns$INTEL)/sd(returns$INTEL), mean(returns$PFE)/sd(returns$PFE)) 
+
+# treynor x 10^3
+10^3 * c(mean(returns$AXP), mean(returns$CITI), mean(returns$XOM), mean(returns$GM), mean(returns$INTEL), mean(returns$PFE)) / c(lm_AXP$co[2], lm_CITI$co[2], lm_XOM$co[2], lm_GM$co[2], lm_INTEL$co[2], lm_PFE$co[2])
+ 
+# f-stat
+n <- 63; q <- 6
+alphahat <- c(coef(lm_AXP)[1], coef(lm_CITI)[1], coef(lm_XOM)[1],
+              coef(lm_GM)[1], coef(lm_INTEL)[1], coef(lm_PFE)[1])
+tmp <- cbind(lm_AXP$residuals, lm_CITI$residuals, lm_XOM$residuals,
+             lm_GM$residuals, lm_INTEL$residuals, lm_PFE$residuals)
+bsigmahat <- t(tmp) %*% tmp / n
+nu <- t(alphahat) %*% solve(bsigmahat) %*% alphahat
+de <- 1 + mean(dj_ret)^2 / (var(dj_ret) * (n - 1) / n)
+stat <- (n - q - 1) / q * nu / de
+stat
+
+qf(0.90, 6, n - q - 1)
+```
+

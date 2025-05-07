@@ -1,0 +1,119 @@
+---
+title: "exercise-6-3"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-6-3}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file w logret 3stocks.txt contains the weekly log returns of three stocks (Citigroup Inc., General Motors, and Pfizer Inc.) from the week of January 4, 1982 to the week of May 21, 2007.
+
+w_logret <- read.table(system.file("extdata", "w_logret_3stocks.txt", package = "dfracs"), header = TRUE)
+w_logret$Date <- as.Date(w_logret$Date, format = "%m/%d/%Y")
+
+## a: Compute the sample mean, variance, skewness, excess kurtosis, and Ljung-Box statistic up to lag 10 for each return series.
+
+r <- w_logret$Citi
+print(mean(r)) 
+print(var(r)) 
+skewness <- (1/length(r)) * sum((r - mean(r))^3 / (sd(r))^3)
+print(skewness) 
+kurtosis <- (1/length(r)) * sum((r - mean(r))^4 / (sd(r))^4)
+print(kurtosis)
+jb <- length(r) * ((skewness^2)/6 + ((kurtosis - 3)^2/24))
+print(jb)
+Box.test(r, lag = 10, type = "Ljung-Box")
+
+r <- w_logret$GM
+print(mean(r)) 
+print(var(r)) 
+skewness <- (1/length(r)) * sum((r - mean(r))^3 / (sd(r))^3)
+print(skewness) 
+kurtosis <- (1/length(r)) * sum((r - mean(r))^4 / (sd(r))^4)
+print(kurtosis)
+jb <- length(r) * ((skewness^2)/6 + ((kurtosis - 3)^2/24))
+print(jb)
+Box.test(r, lag = 10, type = "Ljung-Box")
+
+r <- w_logret$PFE
+print(mean(r)) 
+print(var(r)) 
+skewness <- (1/length(r)) * sum((r - mean(r))^3 / (sd(r))^3)
+print(skewness) 
+kurtosis <- (1/length(r)) * sum((r - mean(r))^4 / (sd(r))^4)
+print(kurtosis)
+jb <- length(r) * ((skewness^2)/6 + ((kurtosis - 3)^2/24))
+print(jb)
+Box.test(r, lag = 10, type = "Ljung-Box")
+
+## b: Plot the histograms of these returns and the squared returns.
+hist(w_logret$Citi, 
+     main = "Histogram for Weekly Log Returns of Citi", 
+     xlab = "Log Returns of Citi", 
+     ylab = "Frequency",
+     breaks = 20)
+hist(w_logret$Citi^2, 
+     main = "Histogram for Squared Weekly Log Returns of Citi", 
+     xlab = "Squared Log Returns of Citi", 
+     ylab = "Frequency",
+     breaks = 20)
+hist(w_logret$GM, 
+     main = "Histogram for Weekly Log Returns of GM", 
+     xlab = "Log Returns of GM", 
+     ylab = "Frequency",
+     breaks = 20)
+hist(w_logret$GM^2, 
+     main = "Histogram for Squared Weekly Log Returns of GM", 
+     xlab = "Squared Log Returns of GM", 
+     ylab = "Frequency",
+     breaks = 20)
+hist(w_logret$PFE, 
+     main = "Histogram for Weekly Log Returns of PFE", 
+     xlab = "Log Returns of PFE", 
+     ylab = "Frequency",
+     breaks = 20)
+hist(w_logret$PFE^2, 
+     main = "Histogram for Squared Weekly Log Returns of PFE", 
+     xlab = "Squared Log Returns of PFE", 
+     ylab = "Frequency",
+     breaks = 20)
+
+## c: For each stock, perform the Jarque-Bera test of the null hypothesis of normally distributed log returns.
+
+#Done in part A for easier calculation.
+
+## d: For each stock, plot the ACFs of the return series and the squared return series and compare them.
+acf(w_logret$Citi, 
+    main = "ACF of Citi", 
+    lwd = 4)
+acf(w_logret$Citi^2, 
+    main = "Squared Series ACF of Citi", 
+    lwd = 4)
+acf(w_logret$GM, 
+    main = "ACF of GM", 
+    lwd = 4)
+acf(w_logret$GM^2, 
+    main = "Squared Series ACF of GM", 
+    lwd = 4)
+acf(w_logret$PFE, 
+    main = "ACF of PFE", 
+    lwd = 4)
+acf(w_logret$PFE^2, 
+    main = "Squared Series ACF of PFE", 
+    lwd = 4)
+```
+```
+

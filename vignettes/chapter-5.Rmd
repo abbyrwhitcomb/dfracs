@@ -1,0 +1,135 @@
+---
+title: "chapter-5"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{chapter-5}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r, fig.width = 7, fig.height = 5}
+## Page 118
+d_logret <- read.table(system.file("extdata", "d_logret_6stocks.txt", package = "dfracs"), header = TRUE)
+d_logret$Date <- as.Date(d_logret$Date, format = "%d-%b-%y")
+
+group = d_logret[, -7]
+group = group[, -3]
+for (i in colnames(group[,-1])) {
+  plot(d_logret$Date, d_logret[[i]], 
+       type = "l",
+       main = i,
+       xlab = "Date", 
+       ylab = "Log Returns",
+       ylim = c(-0.1, 0.1))
+}
+
+plot(d_logret$Date, d_logret$GenMotor, 
+       type = "l",
+       main = "GenMotor",
+       xlab = "Date", 
+       ylab = "Log Returns",
+       ylim = c(-0.2, 0.2))
+
+plot(d_logret$Date, d_logret$Intel, 
+       type = "l",
+       main = "Intel",
+       xlab = "Date", 
+       ylab = "Log Returns",
+       ylim = c(-0.4, 0.4))
+
+
+for (i in 2:ncol(d_logret)) {
+  print(Box.test(d_logret[[i]], lag = 20, type = "Ljung-Box"))
+}
+
+## Page 119
+
+for (i in 2:ncol(d_logret)) {
+  acf(d_logret[[i]], 
+      main = colnames(d_logret)[i],
+      lwd = 4,
+      ci = 0.95)
+}
+
+## Page 125
+
+unem_dallas <- read.table(system.file("extdata", "unem_dallas.txt", package = "dfracs"), header = TRUE, skip = 1)
+unem_dallas$Date <- as.Date(paste0("01-", unem_dallas$Month), format = "%d-%b-%y")
+
+plot(unem_dallas$Date, unem_dallas$rate, 
+     main = "Monthly unemployment rates (in %) in Dallas County, Arizona",
+     type = "l",
+     xlab = "Date", 
+     ylab = "Unemployment Rate")
+
+acf(unem_dallas$rate, 
+    main = "ACF of Dallas County Unemployment Rates", 
+    lwd = 4)
+
+pacf(unem_dallas$rate, 
+     main = "PACF of Dallas County Unemployment Rates", 
+     lwd = 4)
+
+## Page 126
+
+ts <- ts(unem_dallas$rate, start = c(1980, 1), frequency = 12)
+arima_1_0_1 <- arima(ts, order = c(1, 0, 1))
+summary(arima_1_0_1)
+
+decomposition <- decompose(ts)
+plot(decomposition)
+
+## Page 127
+
+deseasonalized <- ts - decomposition$seasonal
+
+acf(deseasonalized, 
+    main = "ACF of Deseasonalized Dallas County Unemployment Rates", 
+    lwd = 4)
+pacf(deseasonalized, 
+     main = "PACF of Deseasonalized Dallas County Unemployment Rates", 
+     lwd = 4)
+
+tsdiag(arima_1_0_1)
+
+## Page 128
+
+aic <- matrix(NA, nrow = 3, ncol = 3)
+for (p in 1:3) {
+  for (q in 1:3) {
+    arma <- arima(deseasonalized, order = c(p, 0, q))
+    aic[p, q] <- AIC(arma)
+  }
+}
+rownames(aic) <- paste("p =", 1:3)
+colnames(aic) <- paste("q =", 1:3)
+print(aic)
+
+ts_2005 <- window(ts, start = c(2005, 1), end = c(2005, 6))
+deseasonalized <- ts - decomposition$seasonal
+deseason_2005 <- round(window(deseasonalized, start = c(2005, 1), end = c(2005, 6)), 2)
+seasonal_2005 <- round(window(decomposition$seasonal, start = c(2005, 1), end = c(2005, 6)), 2)
+predicted <- round(deseason_2005 + seasonal_2005, 2)
+
+result <- data.frame(
+  Month = month.abb[1:6],
+  Actual_rate = round(ts_2005, 2),
+  Deseasonalized_rate = deseason_2005,
+  s.e. = c(1.14, 1.49, 1.75, 1.89, 1.98, 2.02),
+  Seasonal_rate = seasonal_2005,
+  Predicted_rate = predicted
+)
+
+print(result)
+```

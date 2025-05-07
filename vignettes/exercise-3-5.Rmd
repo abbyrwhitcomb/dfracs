@@ -1,0 +1,113 @@
+---
+title: "exercise-3-5"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-3-5}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file m_ret_10stocks.txt contains the monthly returns of ten stocks from January 1994 to December 2006. The ten stocks include Apple Computer, Adobe Systems, Automatic Data Processing, Advanced Micro Devices, Dell, Gateway, Hewlett-Packard Company, International Business Machines Corp., Microsoft Corp., and Oracle Corp. Consider portfolios that consist of these ten stocks.
+
+m_ret <- read.table(system.file("extdata", "m_logret_10stocks.txt", package = "dfracs"), header = TRUE)
+returns <- m_ret[,-1]
+
+## a: Compute the sample mean μ and the sample covariance matrix Sigma of the log returns.
+
+mu <- as.numeric(colMeans(returns))
+sigma <- cov(returns)
+
+## b: Assume that the monthly target return is 0.3% and that short selling is allowed. Estimate the optimal portfolio weights by replacing (mu,Sigma) in Markowitz’s theory by mu,Sigma.
+
+target <- 0.003
+A <- cbind(rep(1, length(mu)), mu)  # 10x2 matrix: sum weights = 1, return = 0.3%
+b <- c(1, target)
+
+sigma <- solve(sigma)
+lambda <- solve(t(A) %*% sigma %*% A) %*% b
+w_star <- sigma %*% A %*% lambda
+
+names(w_star) <- colnames(returns)
+print(round(w_star, 4))
+
+## c: Do the same as in (b) for Michaud’s resampled weights (3.38) using B = 500 bootstrap samples.
+
+mu_orig <- colMeans(returns)
+sigma_orig <- cov(returns)
+target <- 0.003
+B <- 500
+n <- nrow(returns)
+p <- ncol(returns)
+all_weights <- matrix(0, nrow = B, ncol = p)
+
+set.seed(1052)
+for (b in 1:B) {
+  boot <- returns[sample(n, replace = TRUE), ]
+  mu_b <- colMeans(boot)
+  sigma_b <- cov(boot)
+  A <- cbind(rep(1, p), mu_b)
+  bvec <- c(1, target)
+  sigma_inv <- solve(sigma_b)
+  lambda <- solve(t(A) %*% sigma_inv %*% A) %*% bvec
+  w_b <- sigma_inv %*% A %*% lambda
+  all_weights[b, ] <- w_b
+}
+
+w_michaud <- colMeans(all_weights)
+names(w_michaud) <- colnames(returns)
+
+w_michaud
+
+## d: Plot the estimated eﬃcient frontier (by varying mu* over a grid) that uses (mu,^Sigma^) to replace (mu,Sigma)in Markowitz’s eﬃcient frontier.
+
+mu <- as.numeric(colMeans(returns))
+targets <- seq(min(mu), max(mu), length.out = 100)
+plug_in <- frontier(mu, sigma, targets)
+plot(plug_in$risk, plug_in$return, type = "l", lwd = 2, col = "black",
+     xlab = "Risk", ylab = "Expected Return",
+     main = "Estimated Efficient Frontier")
+
+## e: Plot Michaud’s resampled eﬃcient frontier using B = 500 bootstrap samples. Compare with the plot in (d).
+
+mu <- colMeans(returns)
+Sigma <- cov(returns)
+targets <- seq(min(mu), max(mu), length.out = 100)
+B <- 500
+n <- nrow(returns)
+p <- ncol(returns)
+resampled_weights <- array(0, dim = c(B, p, length(targets)))
+
+set.seed(1052)
+for (b in 1:B) {
+  boot <- returns[sample(n, replace = TRUE), ]
+  mu_b <- colMeans(boot)
+  Sigma_b <- cov(boot)
+  A <- cbind(rep(1, p), mu_b)
+  Sigma_inv <- solve(Sigma_b)
+  for (i in seq_along(targets)) {
+    bvec <- c(1, targets[i])
+    lambda <- solve(t(A) %*% Sigma_inv %*% A) %*% bvec
+    w <- Sigma_inv %*% A %*% lambda
+    resampled_weights[b, , i] <- w
+  }
+}
+
+avg_weights <- apply(resampled_weights, c(2, 3), mean)
+michaud_returns <- colSums(avg_weights * matrix(mu, nrow = p, ncol = length(targets)))
+michaud_risks <- apply(avg_weights, 2, function(w) sqrt(t(w) %*% Sigma %*% w))
+plot(michaud_risks, michaud_returns, type = "l",
+     xlab = "Risk", ylab = "Return", main = "Michaud Efficient Frontier")
+```
+

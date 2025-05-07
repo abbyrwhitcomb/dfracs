@@ -1,0 +1,42 @@
+---
+title: "exercise-2-1"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-2-1}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file d swap.txt contains the daily swap rates rkt for eight maturities Tk = 1,2,3,4,5,7,10, and 30 years from July 3, 2000 to July 15, 2007.In the PCA of Section 2.2.3, (2.17) is an approximation to (dk− muk) sigmak = sum 8 j=1 akjYj. The ratio a2kj / 8 i=1 a2ki represents the proportion that the jth principal component contributes to the variance of the daily changes in the swap rate with maturity Tk. Compute this ratio for the first three principal components and each swap rate. Compare the results with those in Section 2.2.3, where we consider the overall variance instead of the individual variances for diﬀerent swap rates. Discuss your finding.
+
+d_swap <- read.table(system.file("extdata", "d_swap.txt", package = "dfracs"), header = TRUE, skip = 1)
+
+# a^2_kj / (sum i=1,8 a^2_ki): proportion that the jth principal component contributes to the variance of the daily changes in the swap rate with maturity Tk.
+
+diff_d_swap <- diff(as.matrix(d_swap))
+cor_pca <- prcomp(diff_d_swap, scale = TRUE, center = TRUE)
+
+loadings <- cor_pca$rotation
+squared_loadings <- loadings[, 1:3]^2
+
+row_totals <- rowSums(loadings^2)
+pc_contributions <- sweep(squared_loadings, 1, row_totals, FUN = "/")
+
+rownames(pc_contributions) <- rownames(loadings)
+colnames(pc_contributions) <- c("PC1", "PC2", "PC3")
+
+print(round(pc_contributions, 3))
+```
+

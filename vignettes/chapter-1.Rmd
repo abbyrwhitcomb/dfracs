@@ -1,0 +1,85 @@
+---
+title: "chapter-1"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{chapter-1}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(stargazer)
+```
+
+```{r}
+d_logret <- read.table(system.file("extdata", "d_logret_12stocks.txt", package = "dfracs"), header = TRUE)
+d_logret$X. <- as.Date(as.character(d_logret$X.), format = "%Y%m%d")
+d_logret_ret_only <- d_logret[, -1]
+
+## Page 27
+colnames(d_logret)
+company_names <- c("aapl", "adbe", "adp",  "amd",  "dell", "gtw",  "hp",   "ibm",  "msft", "orcl", "sunw", "yhoo")
+multiplotlogreturns(d_logret, company_names, "X.", "Weekly")
+
+## Page 28
+round(cor(d_logret_ret_only), 3)
+
+## Page 29
+plot(d_logret_ret_only)
+
+## Page 30
+library(stargazer)
+library(MASS)
+lm_full <- lm(msft ~ aapl + adbe + adp + amd + dell + gtw + hp + ibm + orcl + sunw + yhoo, d_logret_ret_only)
+stargazer(lm_full, type = "text", digits = 4, report = "vcstp")
+
+stepAIC(lm_full, direction = "backward", k = 10, trace = TRUE)
+lm_selected <- lm(formula = msft ~ aapl + adbe + dell + gtw + ibm + orcl, data = d_logret_ret_only)
+
+## Page 31
+plot(lm_selected$fitted.values, lm_selected$residuals, 
+     xlab = "Fitted Values", 
+     ylab = "Residuals")
+lines(loess.smooth(lm_selected$fitted.values, resid(lm_selected)), col = "red", lwd = 1)
+
+qqnorm(lm_selected$residuals,
+     xlab = "Theorical Quantiles", 
+     ylab = "Standardized residuals")
+qqline(lm_selected$residuals, col = "grey", lty = 2)
+
+plot(lm_selected$fitted.values, d_logret$msft, 
+     xlab = "Fitted Values", 
+     ylab = "msft",)
+
+plot(cooks.distance(lm_selected), 
+     type = "h", 
+     xlab = "Obs. number", 
+     ylab = "Cook's Distance")
+
+studentized <- rstudent(lm_selected)
+qqnorm(studentized,
+     xlab = "Quantiles of Standard Normal", 
+     ylab = "Studentized residuals", 
+     pch = 16)
+qqline(studentized, lty = 1)
+
+standardized <- rstandard(lm_selected)
+qqnorm(standardized,
+     xlab = "Quantiles of Standard Normal", 
+     ylab = "Standardized residuals", 
+     pch = 16)
+qqline(standardized, lty = 1)
+
+## Page 32
+lm_selected <- lm(msft ~ aapl + adbe + dell + gtw + ibm + orcl, d_logret_ret_only)
+stargazer(lm_selected, type = "text", digits = 4, report = "vcstp")
+```
+

@@ -1,0 +1,70 @@
+---
+title: "exercise-5-9"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-5-9}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The first and the fifth columns of the file m swap.txt contain the monthly swap rates (see Section 2.2.3) with 1- and 5-year maturities from July 2000 to May 2006. These data are obtained from www.Economagic.com.
+
+m_swap <- read.table(system.file("extdata", "m_swap.txt", package = "dfracs"), header = TRUE, skip = 1, sep = "")
+m_swap$Month <- as.Date(paste0("01-", m_swap$Month), format = "%d-%b-%Y")
+
+## a: Fit an ARIMA model to the 1-year swap rates using the data from July 2000 to December 2006.
+
+yr1 <- m_swap[, 2]
+yr1_ts <- ts(yr1, start = c(2000, 7), frequency = 12)
+real_yr1 <- window(yr1_ts, end = c(2006, 12))
+model_yr1 <- arima(real_yr1, order = c(1, 1, 1))
+
+## b: For the 1-year rate, use your fitted model to compute k-months-ahead forecasts (k = 1,...,5) and their standard errors, choosing December 2006 as the forecast origin. Compare the forecasts with the actual swap rates, and the standard errors with the forecast errors (which are the diﬀerences between the predicted and actual rates).
+
+forecast_yr1 <- predict(model_yr1, n.ahead = 5)
+pred_yr1 <- forecast_yr1$pred
+
+yr1_ts2 <- ts(yr1, start = c(2000, 7), frequency = 12)
+actual_yr1 <- window(yr1_ts2, start = c(2007, 1), end = c(2007, 5))
+error_yr1 <- actual_yr1 - pred_yr1
+
+data.frame(
+  Month = c("Jan", "Feb", "Mar", "Apr", "May"),
+  Forecast = round(pred_yr1, 4),
+  Actual = round(actual_yr1, 4),
+  Forecast_Error = round(error_yr1, 4)
+)
+
+## c: Consider the spread (i.e., diﬀerence) between the 1-year and 5-year swap rates. Fit an ARIMA model to the spread using the data from July 2000 to December 2006. Compare the forecasts with the actual spreads.
+
+spread <- m_swap[, 2] - m_swap[, 6]
+spread_ts <- ts(spread, start = c(2000, 7), frequency = 12)
+
+real_spread <- window(spread_ts, end = c(2006, 12))
+model_spread <- arima(real_spread, order = c(1, 1, 1)) 
+
+spread_ts_2 <- ts(spread, start = c(2000, 7), frequency = 12)
+forecast_spread <- predict(model_spread, n.ahead = 5)
+pred_spread <- forecast_spread$pred
+actual_spread <- window(spread_ts_2 , start = c(2007, 1), end = c(2007, 5))
+error_spread <- actual_spread - pred_spread
+
+data.frame(
+  Month = c("Jan", "Feb", "Mar", "Apr", "May"),
+  Forecast = pred_spread,
+  Actual = actual_spread,
+  Forecast_Error = error_spread
+)
+```

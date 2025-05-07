@@ -1,0 +1,89 @@
+---
+title: "exercise-1-8"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-1-8}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+library(MASS)
+```
+
+```{r}
+#### The file d_nasdaq_82stocks.txt contains the daily log returns of the NASDAQ Composite Index and 82 stocks from January 3, 1990 to December 29, 2006. We want to track the returns of NASDAQ by using a small number of stocks from the given 82 stocks.
+
+d_nasdaq <- read.table(system.file("extdata", "d_nasdaq_82stocks.txt", package = "dfracs"), header = TRUE)
+d_nasdaq$Date <- as.Date(d_nasdaq$Date, format = "%m/%d/%Y")
+
+##a: Construct a full regression model.
+
+colnames(d_nasdaq)
+lm <- lm(Nasdaq ~ AA + AAPL + AET + ALTR + AMAT + AMD + AMGN + AOC + APA + APD + ASH + AT + AVY + AXP + AYE + BA + BAC + BAX + BBY + BC + BF.B + BLL + BMY + BNI + C + CAH + CAT + CCE + CCL + CEG + CFC + CLX + CMI + COP + COST + CSX + CVX + DD + DELL + DIS + DOV + DUK + ED + EDS + EIX + EK + EOG + EXC + F + FPL + FRX + GE + GM + GPS + GT + HD + HLT + HON + HPC + HPQ + HRB + HSY + HUM + IBM + INTC + IPG + JNJ + JPM + JWN + K + KBH + KMI + KO + KR + LEG + LEN + LLY + LM + LMT + LOW + LUV + MAS, data = d_nasdaq)
+summary(lm)
+
+##b: Use partial F-statistics and backward elimination to select variables from the full regression model in (a). Write down the selected model.
+
+# stepAIC(lm, direction = "backward", k = 10, trace = FALSE)
+# Commented out for extreme run time. Result is the next line.
+
+selected_lm <- lm(formula = Nasdaq ~ AAPL + ALTR + AMAT + AMD + AMGN + AT + BBY + BC + C + CCL + CEG + CFC + COST + DD + DELL + DIS + ED + EDS + FRX + GE + HON + HPQ + HSY + IBM + INTC + IPG + JNJ + JPM + KMI + KO + LEG + LEN + LM, data = d_nasdaq)
+
+##c: Compare the full and selected models. Summarize your comparison in an ANOVA table.
+
+anova(lm, selected_lm)
+
+##d: For the selected regression model in (b), perform residual diagnostics.
+
+plot(selected_lm$fitted.values, selected_lm$residuals, 
+     xlab = "Fitted Values", 
+     ylab = "Residuals")
+lines(loess.smooth(selected_lm$fitted.values, resid(selected_lm)), col = "red", lwd = 1)
+
+qqnorm(selected_lm$residuals,
+     xlab = "Theorical Quantiles", 
+     ylab = "Standardized residuals")
+qqline(selected_lm$residuals, col = "grey", lty = 2)
+
+plot(selected_lm$fitted.values, d_nasdaq$msft, 
+     xlab = "Fitted Values", 
+     ylab = "msft",)
+
+plot(cooks.distance(selected_lm), 
+     type = "h", 
+     xlab = "Obs. number", 
+     ylab = "Cook's Distance")
+
+studentized <- rstudent(selected_lm)
+qqnorm(studentized,
+     xlab = "Quantiles of Standard Normal", 
+     ylab = "Studentized residuals", 
+     pch = 16)
+qqline(studentized, lty = 1)
+
+standardized <- rstandard(selected_lm)
+qqnorm(standardized,
+     xlab = "Quantiles of Standard Normal", 
+     ylab = "Standardized residuals", 
+     pch = 16)
+qqline(standardized, lty = 1)
+
+##e: If you can only use at most five stocks to track the daily NASDAQ log returns, describe your model selection procedure and your constructed model.
+
+# stepAIC(lm, direction = "backward", k = 300, trace = FALSE)
+# Commented out for extreme run time. Result is the next line.
+
+selected_lm2 <- lm(formula = Nasdaq ~ ALTR + AMAT + GE + INTC + LM, data = d_nasdaq)
+anova(lm, selected_lm2)
+
+```
+

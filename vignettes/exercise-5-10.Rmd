@@ -1,0 +1,93 @@
+---
+title: "exercise-5-10"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{exercise-5-10}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+#### The file m sp500ret 3mtcm.txt contains three columns. The second column gives the monthly returns of the S&P 500 index from January 1994 to December 2006. The third column gives the monthly rates of the 3-month U.S. Treasury bill in the secondary market, which are obtained from the Federal Reserve Bank of St. Louis and used as the risk-free rate here. Consider the ten monthly log returns in the file m_logret_10stocks.txt.
+
+m_sp500ret <- read.table(system.file("extdata", "m_sp500ret_3mtcm.txt", package = "dfracs"), header = TRUE, skip = 1, sep = "")
+m_logret <- read.table(system.file("extdata", "m_logret_10stocks.txt", package = "dfracs"), header = TRUE, sep = "")
+
+## a: For each stock, fit CAPM for the period from January 1994 to June 1998 and for the subsequent period from July 1998 to December 2006. Are your estimated betas significantly diﬀerent for the two periods?
+
+sp500_return <- m_sp500ret[,2]
+risk_free_rate <- m_sp500ret[,3]
+logrets <- m_logret[, -1]
+excess_market <- sp500_return - risk_free_rate / 100
+risk_free <- risk_free_rate / 100
+excess_stock <- logrets
+for (i in 1:nrow(logrets)) {
+  excess_stock[i, ] <- logrets[i, ] - risk_free[i]
+}
+
+before <- 1:54      
+after <- 55:156
+
+stocks <- colnames(logrets)
+beta_before <- numeric(length(stocks))
+beta_after <- numeric(length(stocks))
+
+for (i in seq_along(stocks)) {
+  y_early <- excess_stock[before, i]
+  y_after <- excess_stock[after, i]
+  beta_before[i] <- coef(lm(y_early ~ excess_market[before]))[2]
+  beta_after[i] <- coef(lm(y_after ~ excess_market[after]))[2]
+}
+
+betas <- data.frame(
+  Stock = stocks,
+  Beta_before_June1998 = beta_before,
+  Beta_after_July1998 = beta_after,
+  Difference = beta_after - beta_before
+)
+
+print(betas)
+
+## b: Consider the dynamic linear model (5.40) for CAPM with time varying betas. Use the Kalman filter with sigma_w = 0.2 to estimate Beta_t sequentially during the period July 1998–December 2006. The estimated beta β and error variance σ2 obtained in (a) for the period from January 1994 to June 1998 can be used to initialize Beta_0 and to substitute for sigma^2 in the Kalman filter.
+
+# rt − rf,t= Betat(rM,t− rf,t) + epsilont, Betat+1 = Betat + wt+1, (5.40)
+ 
+beta_t <- matrix(NA, nrow = 102, ncol = 10) 
+for (j in 1:10) {
+  y <- excess_stock[after, j]
+  x <- excess_market[after]
+  model <- lm(excess_stock[before, j] ~ excess_market[before])
+  beta <- coef(model)[2]
+  sigma2 <- summary(model)$sigma^2
+  sigma_w2 <- 0.2^2
+  guess <- sigma2
+  for (t in 1:102) {
+    error <- y[t] - beta * x[t]
+    var <- guess * x[t]^2 + sigma2
+    update <- guess * x[t] / var 
+    beta <- beta + update * error
+    beta_t[t, j] <- beta
+    guess <- (1 - update * x[t]) * guess + sigma_w2
+  }
+}
+
+colnames(beta_t) <- colnames(excess_stock)
+print(beta_t)
+
+## c: Compare and discuss your sequential estimates with the estimate of beta in (a) for the period July 1998 to December 2006.
+
+print(betas)
+print(beta_t)
+
+```

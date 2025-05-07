@@ -1,0 +1,70 @@
+---
+title: "chapter-2"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{chapter-2}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(dfracs)
+```
+
+```{r}
+d_swap <- read.table(system.file("extdata", "d_swap.txt", package = "dfracs"), header = TRUE, skip = 1)
+
+## Page 45
+
+diff_d_swap <- diff(as.matrix(d_swap))
+
+means <- colMeans(diff_d_swap)
+means_10e3 <-  round(means * 10^(3), digits = 3) 
+print(means_10e3)
+  
+vcov <- cov(diff_d_swap)
+vcov_10e2 <- round(vcov * 10^(2), digits = 3)
+print(vcov_10e2)
+
+cor <- round(cor(diff_d_swap), digits = 3)
+print(cor)
+
+## Page 46
+
+plot(1:nrow(d_swap), d_swap$X.swp1y, type = "l", lty = 1)
+lines(1:nrow(d_swap), d_swap$sw4y, lty = 3)
+lines(1:nrow(d_swap), d_swap$sw10y, lwd = 2)
+lines(1:nrow(d_swap), d_swap$sw30y, lty = 2)
+legend("bottomleft", 
+       legend = c("swp1y", "sw4y", "sw10y", "sw30y"),
+       lty = c(1, 3, 1, 2),
+       lwd = c(1, 1, 2, 1))
+
+plot(1:nrow(diff_d_swap), diff_d_swap[, "X.swp1y"], type = "l", lty = 1)
+plot(1:nrow(diff_d_swap), diff_d_swap[, "sw30y"], type = "l", lty = 1)
+
+## Page 47
+
+cov_pca <- prcomp(diff_d_swap, scale = FALSE)
+print(cov_pca)
+cor_pca <- prcomp(diff_d_swap, scale = TRUE)
+print(cor_pca)
+
+## Page 49 
+
+vars <- cor_pca$sdev^2
+barplot(vars)
+
+eigenvectors <- cor_pca$rotation[, 1:3]
+barplot(t(eigenvectors), beside = TRUE, col = c("black", "grey", "white"),
+        legend.text = c("the 1st", "the 2nd", "the 3rd"),
+        args.legend = list(x = "topright"))
+```
+
